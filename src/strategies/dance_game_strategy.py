@@ -183,6 +183,10 @@ class DanceGameStrategy(ExerciseStrategy):
         detected_side = None
 
         posture_info = detect_user_posture(landmarks)
+        pose_pts = None
+        hands = []
+        nose = ear_l = ear_r = sh_l = sh_r = el_l = el_r = w_l = w_r = hip_l = hip_r = None
+        shoulder_line_y = 0.5
 
         if landmarks is not None:
             hands = landmarks.hands if hasattr(landmarks, "hands") else []
@@ -360,13 +364,24 @@ class DanceGameStrategy(ExerciseStrategy):
             # -------------------------------------------------------------
             elif ex_type in ["triceps_stretch"]:
                 if pose_pts is not None and len(pose_pts) > 16:
-                    left_high = el_l.y < (nose.y + 0.04) if nose else (el_l.y < shoulder_line_y - 0.15)
-                    right_high = el_r.y < (nose.y + 0.04) if nose else (el_r.y < shoulder_line_y - 0.15)
+                    # Un codo debe estar claramente elevado por encima del nivel del hombro
+                    left_elevated = el_l.y < (shoulder_line_y - 0.04)
+                    right_elevated = el_r.y < (shoulder_line_y - 0.04)
 
-                    if left_high and not right_high:
+                    # Si el usuario sostiene el codo con la otra mano, el codo doblado más alto es el dominante
+                    if left_elevated and (el_l.y < el_r.y - 0.03):
                         detected_side = "LEFT"
-                    elif right_high and not left_high:
+                    elif right_elevated and (el_r.y < el_l.y - 0.03):
                         detected_side = "RIGHT"
+                    elif left_elevated and not right_elevated:
+                        detected_side = "LEFT"
+                    elif right_elevated and not left_elevated:
+                        detected_side = "RIGHT"
+                    elif left_elevated and right_elevated:
+                        # Si ambos están arriba, el codo más flexionado o cuya mano esté tras la cabeza es el principal
+                        dist_w_l = math.hypot(w_l.x - (nose.x if nose else 0.5), w_l.y - (nose.y if nose else 0.3))
+                        dist_w_r = math.hypot(w_r.x - (nose.x if nose else 0.5), w_r.y - (nose.y if nose else 0.3))
+                        detected_side = "LEFT" if dist_w_l < dist_w_r else "RIGHT"
 
                     if detected_side:
                         high_el = el_l if detected_side == "LEFT" else el_r
@@ -577,6 +592,26 @@ class DanceGameStrategy(ExerciseStrategy):
         else:
             streak_badge = f"COMBO x{self.combo}"
 
+        # Flecha direccional guía para ejercicios bilaterales (Lado 1 y Lado 2)
+        guide_direction = None
+        guide_center_pt = None
+        if is_bilateral and not getattr(self, "is_completed", False):
+            if self.current_side_phase == 1:
+                guide_direction = "LEFT"
+            else:
+                guide_direction = "RIGHT" if self.side_1_detected == "LEFT" else "LEFT"
+
+            if pose_pts is not None and len(pose_pts) > 16:
+                if ex_type in ["neck_tilt", "neck_stretch"]:
+                    guide_center_pt = (int(nose.x * frame_w), int(nose.y * frame_h)) if nose else None
+                elif ex_type in ["triceps_stretch"]:
+                    guide_center_pt = (int(nose.x * frame_w), int((shoulder_line_y - 0.06) * frame_h)) if nose else None
+                elif ex_type in ["trunk_twist"]:
+                    guide_center_pt = (int(nose.x * frame_w), int(shoulder_line_y * frame_h)) if nose else None
+                elif ex_type in ["wrist_stretch", "hand_right", "hand_left"]:
+                    target_ref = sh_l if guide_direction == "LEFT" else sh_r
+                    guide_center_pt = (int(target_ref.x * frame_w), int((shoulder_line_y + 0.04) * frame_h)) if target_ref else None
+
         # Cadena de paso con indicación de lado si aplica
         base_step_str = f"Paso {self.current_step_index + 1}/{len(self.exercises)}: {step_info['title']}"
         if is_bilateral:
@@ -601,6 +636,8 @@ class DanceGameStrategy(ExerciseStrategy):
             "avatar_img": avatar_img,
             "has_video_guide": False,
             "hand_highlight": hand_highlight,
+            "guide_direction": guide_direction,
+            "guide_center_pt": guide_center_pt,
             "hip_guide_pts": hip_guide_pts,
             "shoulder_guide_pts": shoulder_guide_pts,
             "chest_expansion_pct": self.chest_expansion_pct,

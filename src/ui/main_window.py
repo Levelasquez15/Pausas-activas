@@ -846,6 +846,12 @@ class MainWindow(ctk.CTk):
                 cv2.circle(frame, hand_pt, 14, (16, 185, 129), 2)
                 cv2.circle(frame, hand_pt, 8, (16, 185, 129), -1)
 
+            # Flecha guía direccional animada para ejercicios bilaterales (Lado 1 y Lado 2)
+            guide_dir = metrics.get("guide_direction")
+            guide_pt = metrics.get("guide_center_pt")
+            if guide_dir and guide_pt and not is_completed:
+                draw_direction_indicator(frame, guide_dir, guide_pt, tick=metrics.get("tick", 0), color=(56, 189, 248))
+
         elif self.active_strategy.category == "estiramiento":
             step = metrics.get("step", 0)
             step_titles = ["Paso 1/2: Inclinación de Cuello (Cualquier lado)", "Paso 2/2: Brazos al Cielo"]
