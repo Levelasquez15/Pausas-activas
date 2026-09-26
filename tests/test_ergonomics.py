@@ -123,5 +123,114 @@ class TestErgonomicCatalog(unittest.TestCase):
         self.assertTrue(res["is_matched"])
         self.assertIn("túnel carpiano", res["feedback"])
 
+    def test_triceps_stretch_bilateral_progression(self):
+        class MockPoint:
+            def __init__(self, x, y, z=0.0, visibility=0.9):
+                self.x, self.y, self.z, self.visibility = x, y, z, visibility
+
+        import time
+
+        # Posicionarse en ESTIRAMIENTO_TRICEPS (índice 4 en catálogo de 8)
+        self.strategy.waiting_for_greeting = False
+        triceps_idx = [i for i, ex in enumerate(self.strategy.exercises) if ex["id"] == "ESTIRAMIENTO_TRICEPS"][0]
+        self.strategy.current_step_index = triceps_idx
+
+        # 1. Fase 1: Brazo izquierdo del usuario (codo en pantalla izquierda x < 0.5)
+        # MediaPipe landmarks:
+        # sh_r en x=0.38, sh_l en x=0.62 (shoulder_line_y = 0.40)
+        # codo izq en pantalla: el_r (x=0.32, y=0.25 -> por encima de hombros)
+        # codo der en pantalla: el_l (x=0.65, y=0.55 -> abajo)
+        pts_left_arm = [MockPoint(0.5, 0.2)] * 33
+        pts_left_arm[11] = MockPoint(0.62, 0.40) # sh_l
+        pts_left_arm[12] = MockPoint(0.38, 0.40) # sh_r
+        pts_left_arm[13] = MockPoint(0.65, 0.55) # el_l (abajo)
+        pts_left_arm[14] = MockPoint(0.32, 0.25) # el_r (arriba en pantalla izquierda = brazo izquierdo)
+
+        res1 = self.strategy.process_frame(pts_left_arm, (480, 640))
+        self.assertTrue(res1["is_matched"])
+        self.assertEqual(self.strategy.current_side_phase, 1)
+
+        # Simular 4.1 segundos para completar Fase 1
+        self.strategy.hold_start_time = time.time() - 4.1
+        res1_done = self.strategy.process_frame(pts_left_arm, (480, 640))
+        self.assertEqual(self.strategy.current_side_phase, 2)
+        self.assertEqual(self.strategy.side_1_detected, "LEFT")
+        # En Fase 2, la guía DEBE apuntar a la DERECHA
+        self.assertEqual(res1_done["guide_direction"], "RIGHT")
+
+        # Si el usuario insiste con el brazo izquierdo en Fase 2, no debe hacer match y avisa cambiar a Derecho
+        res_repeat_left = self.strategy.process_frame(pts_left_arm, (480, 640))
+        self.assertFalse(res_repeat_left["is_matched"])
+        self.assertIn("Derecho", res_repeat_left["warning_msg"])
+
+        # 2. Fase 2: Ahora eleva el brazo derecho (codo en pantalla derecha x > 0.5)
+        pts_right_arm = [MockPoint(0.5, 0.2)] * 33
+        pts_right_arm[11] = MockPoint(0.62, 0.40) # sh_l
+        pts_right_arm[12] = MockPoint(0.38, 0.40) # sh_r
+        pts_right_arm[13] = MockPoint(0.65, 0.25) # el_l (arriba en pantalla derecha = brazo derecho)
+        pts_right_arm[14] = MockPoint(0.32, 0.55) # el_r (abajo)
+
+        res2 = self.strategy.process_frame(pts_right_arm, (480, 640))
+        self.assertTrue(res2["is_matched"])
+
+        # Simular 4.1 segundos para completar Fase 2
+        self.strategy.hold_start_time = time.time() - 4.1
+        res2_done = self.strategy.process_frame(pts_right_arm, (480, 640))
+        # Debe haber avanzado al siguiente ejercicio
+        self.assertEqual(self.strategy.current_step_index, triceps_idx + 1)
+        self.assertEqual(self.strategy.current_side_phase, 1)
+
+    def test_trunk_twist_bilateral_progression(self):
+        class MockPoint:
+            def __init__(self, x, y, z=0.0, visibility=0.9):
+                self.x, self.y, self.z, self.visibility = x, y, z, visibility
+
+        import time
+
+        self.strategy.waiting_for_greeting = False
+        twist_idx = [i for i, ex in enumerate(self.strategy.exercises) if ex["id"] == "TORSION_TRONCO"][0]
+        self.strategy.current_step_index = twist_idx
+
+        # 1. Giro a la izquierda: nariz desplazada hacia la izquierda (x=0.42 con hombros en 0.38 y 0.62, centro 0.50)
+        # orejas: oreja izq (ear_r) en x=0.40, oreja der (ear_l) en x=0.58
+        pts_twist_left = [MockPoint(0.42, 0.2)] * 33 # nose en 0.42
+        pts_twist_left[11] = MockPoint(0.62, 0.40) # sh_l
+        pts_twist_left[12] = MockPoint(0.38, 0.40) # sh_r
+        pts_twist_left[7] = MockPoint(0.58, 0.20)  # ear_l
+        pts_twist_left[8] = MockPoint(0.40, 0.20)  # ear_r
+
+        res1 = self.strategy.process_frame(pts_twist_left, (480, 640))
+        self.assertTrue(res1["is_matched"])
+        self.assertEqual(self.strategy.current_side_phase, 1)
+
+        # Simular 4.1s para terminar Lado 1
+        self.strategy.hold_start_time = time.time() - 4.1
+        res1_done = self.strategy.process_frame(pts_twist_left, (480, 640))
+        self.assertEqual(self.strategy.current_side_phase, 2)
+        self.assertEqual(self.strategy.side_1_detected, "LEFT")
+        # En Fase 2, la guía DEBE exigir rotar a la DERECHA
+        self.assertEqual(res1_done["guide_direction"], "RIGHT")
+
+        # Si insiste a la izquierda, no empareja y pide Derecha
+        res_repeat_left = self.strategy.process_frame(pts_twist_left, (480, 640))
+        self.assertFalse(res_repeat_left["is_matched"])
+        self.assertIn("Derech", res_repeat_left["warning_msg"])
+
+        # 2. Giro a la derecha: nariz desplazada hacia la derecha (x=0.58)
+        pts_twist_right = [MockPoint(0.58, 0.2)] * 33 # nose en 0.58
+        pts_twist_right[11] = MockPoint(0.62, 0.40) # sh_l
+        pts_twist_right[12] = MockPoint(0.38, 0.40) # sh_r
+        pts_twist_right[7] = MockPoint(0.60, 0.20)  # ear_l
+        pts_twist_right[8] = MockPoint(0.42, 0.20)  # ear_r
+
+        res2 = self.strategy.process_frame(pts_twist_right, (480, 640))
+        self.assertTrue(res2["is_matched"])
+
+        # Simular 4.1s para terminar Lado 2
+        self.strategy.hold_start_time = time.time() - 4.1
+        res2_done = self.strategy.process_frame(pts_twist_right, (480, 640))
+        self.assertEqual(self.strategy.current_step_index, twist_idx + 1)
+        self.assertEqual(self.strategy.current_side_phase, 1)
+
 if __name__ == "__main__":
     unittest.main()

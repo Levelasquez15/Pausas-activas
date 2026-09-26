@@ -210,23 +210,34 @@ class DanceGameStrategy(ExerciseStrategy):
             # -------------------------------------------------------------
             if ex_type in ["wrist_stretch", "hand_right", "hand_left"]:
                 if pose_pts is not None and len(pose_pts) > 16:
-                    angle_left = calculate_angle_2d((sh_l.x, sh_l.y), (el_l.x, el_l.y), (w_l.x, w_l.y))
-                    angle_right = calculate_angle_2d((sh_r.x, sh_r.y), (el_r.x, el_r.y), (w_r.x, w_r.y))
-                    dist_wrists = math.hypot(w_l.x - w_r.x, w_l.y - w_r.y)
+                    # En pantalla espejada (cv2.flip):
+                    # - Pantalla izquierda (x < sh_center): Brazo izquierdo del usuario
+                    # - Pantalla derecha (x >= sh_center): Brazo derecho del usuario
+                    hombro_izq = sh_r if sh_r.x < sh_l.x else sh_l
+                    hombro_der = sh_l if sh_l.x >= sh_r.x else sh_r
 
-                    left_elevated = (w_l.y < shoulder_line_y + 0.20) and (w_l.y > (nose.y - 0.10) if nose else (shoulder_line_y - 0.20))
-                    right_elevated = (w_r.y < shoulder_line_y + 0.20) and (w_r.y > (nose.y - 0.10) if nose else (shoulder_line_y - 0.20))
+                    codo_izq = el_r if el_r.x < el_l.x else el_l
+                    codo_der = el_l if el_l.x >= el_r.x else el_r
+
+                    mano_izq = w_r if w_r.x < w_l.x else w_l
+                    mano_der = w_l if w_l.x >= w_r.x else w_r
+
+                    angle_left = calculate_angle_2d((hombro_izq.x, hombro_izq.y), (codo_izq.x, codo_izq.y), (mano_izq.x, mano_izq.y))
+                    angle_right = calculate_angle_2d((hombro_der.x, hombro_der.y), (codo_der.x, codo_der.y), (mano_der.x, mano_der.y))
+
+                    left_elevated = (mano_izq.y < shoulder_line_y + 0.20) and (mano_izq.y > (nose.y - 0.10) if nose else (shoulder_line_y - 0.20))
+                    right_elevated = (mano_der.y < shoulder_line_y + 0.20) and (mano_der.y > (nose.y - 0.10) if nose else (shoulder_line_y - 0.20))
 
                     left_2d_ext = (angle_left >= 130.0) and left_elevated
                     right_2d_ext = (angle_right >= 130.0) and right_elevated
 
-                    sh_l_z = getattr(sh_l, "z", 0.0) or 0.0
-                    w_l_z = getattr(w_l, "z", 0.0) or 0.0
-                    sh_r_z = getattr(sh_r, "z", 0.0) or 0.0
-                    w_r_z = getattr(w_r, "z", 0.0) or 0.0
+                    sh_izq_z = getattr(hombro_izq, "z", 0.0) or 0.0
+                    w_izq_z = getattr(mano_izq, "z", 0.0) or 0.0
+                    sh_der_z = getattr(hombro_der, "z", 0.0) or 0.0
+                    w_der_z = getattr(mano_der, "z", 0.0) or 0.0
 
-                    left_forward_3d = ((sh_l_z - w_l_z) > 0.08) and left_elevated
-                    right_forward_3d = ((sh_r_z - w_r_z) > 0.08) and right_elevated
+                    left_forward_3d = ((sh_izq_z - w_izq_z) > 0.08) and left_elevated
+                    right_forward_3d = ((sh_der_z - w_der_z) > 0.08) and right_elevated
 
                     left_active = left_2d_ext or left_forward_3d
                     right_active = right_2d_ext or right_forward_3d
@@ -236,9 +247,9 @@ class DanceGameStrategy(ExerciseStrategy):
                         hand_item = hands[0]
                         if hand_item[0].y < shoulder_line_y + 0.22 and hand_item[12].y < hand_item[0].y - 0.04:
                             if hand_item[0].x < 0.5:
-                                right_active = True # Efecto espejo: lado derecho de la pantalla
+                                left_active = True # Pantalla izquierda = brazo izquierdo
                             else:
-                                left_active = True
+                                right_active = True
 
                     if left_active and not right_active:
                         detected_side = "LEFT"
@@ -248,7 +259,7 @@ class DanceGameStrategy(ExerciseStrategy):
                         detected_side = "LEFT" if self.current_side_phase == 1 else "RIGHT"
 
                     if detected_side:
-                        target_w = w_l if detected_side == "LEFT" else w_r
+                        target_w = mano_izq if detected_side == "LEFT" else mano_der
                         hand_highlight = (int(target_w.x * frame_w), int(target_w.y * frame_h))
 
                     # Lógica bilateral: En fase 1 se acepta cualquier mano; en fase 2 se exige la contraria
@@ -330,12 +341,16 @@ class DanceGameStrategy(ExerciseStrategy):
                     ear_angle = calculate_slope_angle((ear_l.x, ear_l.y), (ear_r.x, ear_r.y))
                     sh_angle = calculate_slope_angle((sh_l.x, sh_l.y), (sh_r.x, sh_r.y))
                     tilt_angle = abs(ear_angle - sh_angle)
-                    ear_diff = abs(ear_l.y - ear_r.y)
                     shoulder_diff = abs(sh_l.y - sh_r.y)
                     hands_down = (w_l.y > shoulder_line_y + 0.05) and (w_r.y > shoulder_line_y + 0.05)
 
-                    left_tilted = (ear_r.y > ear_l.y + 0.030) and (tilt_angle >= 11.5)
-                    right_tilted = (ear_l.y > ear_r.y + 0.030) and (tilt_angle >= 11.5)
+                    # Oreja en pantalla izquierda vs pantalla derecha
+                    oreja_izq = ear_r if (ear_r and ear_l and ear_r.x < ear_l.x) else ear_l
+                    oreja_der = ear_l if (ear_r and ear_l and ear_l.x >= ear_r.x) else ear_r
+
+                    # Inclinación a la izquierda: oreja en pantalla izquierda desciende hacia el hombro
+                    left_tilted = (oreja_izq.y > oreja_der.y + 0.026) and (tilt_angle >= 10.0)
+                    right_tilted = (oreja_der.y > oreja_izq.y + 0.026) and (tilt_angle >= 10.0)
 
                     if left_tilted and not right_tilted:
                         detected_side = "LEFT"
@@ -364,27 +379,28 @@ class DanceGameStrategy(ExerciseStrategy):
             # -------------------------------------------------------------
             elif ex_type in ["triceps_stretch"]:
                 if pose_pts is not None and len(pose_pts) > 16:
-                    # Un codo debe estar claramente elevado por encima del nivel del hombro
-                    left_elevated = el_l.y < (shoulder_line_y - 0.04)
-                    right_elevated = el_r.y < (shoulder_line_y - 0.04)
+                    # En pantalla espejada (cv2.flip):
+                    # Codo en pantalla izquierda = Brazo izquierdo del usuario
+                    # Codo en pantalla derecha = Brazo derecho del usuario
+                    codo_izq = el_r if el_r.x < el_l.x else el_l
+                    codo_der = el_l if el_l.x >= el_r.x else el_r
 
-                    # Si el usuario sostiene el codo con la otra mano, el codo doblado más alto es el dominante
-                    if left_elevated and (el_l.y < el_r.y - 0.03):
+                    izq_elevado = codo_izq.y < (shoulder_line_y - 0.03)
+                    der_elevado = codo_der.y < (shoulder_line_y - 0.03)
+
+                    if izq_elevado and (codo_izq.y < codo_der.y - 0.02):
                         detected_side = "LEFT"
-                    elif right_elevated and (el_r.y < el_l.y - 0.03):
+                    elif der_elevado and (codo_der.y < codo_izq.y - 0.02):
                         detected_side = "RIGHT"
-                    elif left_elevated and not right_elevated:
+                    elif izq_elevado and not der_elevado:
                         detected_side = "LEFT"
-                    elif right_elevated and not left_elevated:
+                    elif der_elevado and not izq_elevado:
                         detected_side = "RIGHT"
-                    elif left_elevated and right_elevated:
-                        # Si ambos están arriba, el codo más flexionado o cuya mano esté tras la cabeza es el principal
-                        dist_w_l = math.hypot(w_l.x - (nose.x if nose else 0.5), w_l.y - (nose.y if nose else 0.3))
-                        dist_w_r = math.hypot(w_r.x - (nose.x if nose else 0.5), w_r.y - (nose.y if nose else 0.3))
-                        detected_side = "LEFT" if dist_w_l < dist_w_r else "RIGHT"
+                    elif izq_elevado and der_elevado:
+                        detected_side = "LEFT" if codo_izq.y < codo_der.y else "RIGHT"
 
                     if detected_side:
-                        high_el = el_l if detected_side == "LEFT" else el_r
+                        high_el = codo_izq if detected_side == "LEFT" else codo_der
                         hand_highlight = (int(high_el.x * frame_w), int(high_el.y * frame_h))
 
                     if self.current_side_phase == 1:
@@ -406,18 +422,27 @@ class DanceGameStrategy(ExerciseStrategy):
             # -------------------------------------------------------------
             elif ex_type in ["trunk_twist"]:
                 if pose_pts is not None and len(pose_pts) > 16:
-                    d_l = abs(nose.x - ear_l.x) if nose and ear_l else 0.1
-                    d_r = abs(nose.x - ear_r.x) if nose and ear_r else 0.1
-                    turn_ratio = d_l / max(0.005, d_r)
-                    sh_center = (sh_l.x + sh_r.x) / 2.0
-                    nose_displacement = abs(nose.x - sh_center) / max(0.01, abs(sh_l.x - sh_r.x)) if nose else 0
+                    sh_center_x = (sh_l.x + sh_r.x) / 2.0 if (sh_l and sh_r) else 0.5
+                    sh_width = max(0.06, abs(sh_l.x - sh_r.x))
 
-                    left_turned = (turn_ratio < 0.42) and (nose_displacement > 0.14)
-                    right_turned = (turn_ratio > 2.38) and (nose_displacement > 0.14)
+                    # Oreja en pantalla izquierda vs pantalla derecha
+                    oreja_izq = ear_r if (ear_r and ear_l and ear_r.x < ear_l.x) else ear_l
+                    oreja_der = ear_l if (ear_r and ear_l and ear_l.x >= ear_r.x) else ear_r
 
-                    if left_turned and not right_turned:
+                    dist_izq = abs(nose.x - oreja_izq.x) if (nose and oreja_izq) else 0.10
+                    dist_der = abs(nose.x - oreja_der.x) if (nose and oreja_der) else 0.10
+
+                    # Desplazamiento de la nariz respecto al centro del torso
+                    nose_offset = (nose.x - sh_center_x) / sh_width if nose else 0.0
+
+                    # Giro a la izquierda: la nariz va hacia la izquierda de la pantalla
+                    gira_izq = (nose_offset < -0.065) or (dist_izq < dist_der * 0.55 and nose_offset < -0.025)
+                    # Giro a la derecha: la nariz va hacia la derecha de la pantalla
+                    gira_der = (nose_offset > 0.065) or (dist_der < dist_izq * 0.55 and nose_offset > 0.025)
+
+                    if gira_izq and not gira_der:
                         detected_side = "LEFT"
-                    elif right_turned and not left_turned:
+                    elif gira_der and not gira_izq:
                         detected_side = "RIGHT"
 
                     if self.current_side_phase == 1:
@@ -609,7 +634,9 @@ class DanceGameStrategy(ExerciseStrategy):
                 elif ex_type in ["trunk_twist"]:
                     guide_center_pt = (int(nose.x * frame_w), int(shoulder_line_y * frame_h)) if nose else None
                 elif ex_type in ["wrist_stretch", "hand_right", "hand_left"]:
-                    target_ref = sh_l if guide_direction == "LEFT" else sh_r
+                    hombro_izq = sh_r if sh_r.x < sh_l.x else sh_l
+                    hombro_der = sh_l if sh_l.x >= sh_r.x else sh_r
+                    target_ref = hombro_izq if guide_direction == "LEFT" else hombro_der
                     guide_center_pt = (int(target_ref.x * frame_w), int((shoulder_line_y + 0.04) * frame_h)) if target_ref else None
 
         # Cadena de paso con indicación de lado si aplica
