@@ -174,7 +174,22 @@ class MainWindow(ctk.CTk):
             height=30,
             corner_radius=8
         )
-        self.btn_trigger_break.pack(padx=12, pady=(0, 10), fill="x")
+        self.btn_trigger_break.pack(padx=12, pady=(0, 6), fill="x")
+
+        # Opción de bloqueo de pantalla durante pausas
+        self.chk_screen_lock = ctk.CTkCheckBox(
+            self.timer_card,
+            text="Bloquear pantalla",
+            font=ctk.CTkFont(size=10),
+            text_color=self.config.COLOR_TEXT_SECONDARY,
+            fg_color=self.config.COLOR_ACCENT_ZEN,
+            hover_color="#0284c7",
+            height=18,
+            checkbox_width=16,
+            checkbox_height=16
+        )
+        self.chk_screen_lock.select()
+        self.chk_screen_lock.pack(padx=12, pady=(0, 8), anchor="w")
 
         # Separador / Categorías
         sep_lbl = ctk.CTkLabel(
@@ -909,6 +924,13 @@ class MainWindow(ctk.CTk):
         self.is_break_active = True
         self.timer_card.configure(border_width=2, border_color="#22c55e")
         self.btn_trigger_break.configure(text="Terminar Pausa", fg_color="#ef4444", hover_color="#dc2626", command=self._finish_break)
+
+        # Si el usuario tiene activo el bloqueo de pantalla, poner la app al frente
+        if hasattr(self, "chk_screen_lock") and self.chk_screen_lock.get():
+            self.attributes("-topmost", True)
+            self.lift()
+            self.focus_force()
+
         if not self.is_camera_running:
             self._start_camera()
 
@@ -918,6 +940,9 @@ class MainWindow(ctk.CTk):
 
     def _finish_break(self):
         self.is_break_active = False
+        # Desbloquear pantalla
+        self.attributes("-topmost", False)
+
         summary = self.active_strategy.get_summary()
 
         # Guardar en base de datos SQLite

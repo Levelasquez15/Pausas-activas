@@ -63,15 +63,6 @@ DEFAULT_EXERCISES = [
         "category": "ergonomico"
     },
     {
-        "id": "EXTENSION_LUMBAR",
-        "title": "Extensión Lumbar",
-        "subtitle": "Descompresión Espinal y Espalda Baja",
-        "desc": "Apoya manos en la cintura y arquea suavemente el torso hacia atrás abriendo el tórax",
-        "type": "lumbar_extension",
-        "hold_sec": 7.0,
-        "category": "ergonomico"
-    },
-    {
         "id": "BRAZOS_ARRIBA",
         "title": "Brazos al Cielo",
         "subtitle": "Elongación Axial de Columna",

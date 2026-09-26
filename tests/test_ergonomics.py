@@ -13,7 +13,7 @@ class TestErgonomicCatalog(unittest.TestCase):
 
     def test_exercise_catalog_loaded(self):
         exercises = self.strategy.exercises
-        self.assertEqual(len(exercises), 9)
+        self.assertEqual(len(exercises), 8)
         ids = [ex["id"] for ex in exercises]
         self.assertIn("ESTIRAMIENTO_MUNECA", ids)
         self.assertIn("HOMBROS_CIRCULOS", ids)
@@ -21,7 +21,6 @@ class TestErgonomicCatalog(unittest.TestCase):
         self.assertIn("INCLINACION_CUELLO", ids)
         self.assertIn("ESTIRAMIENTO_TRICEPS", ids)
         self.assertIn("TORSION_TRONCO", ids)
-        self.assertIn("EXTENSION_LUMBAR", ids)
         self.assertIn("BRAZOS_ARRIBA", ids)
         self.assertIn("BOMBEO_PANTORRILLAS", ids)
 
