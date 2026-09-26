@@ -762,8 +762,8 @@ class MainWindow(ctk.CTk):
                         landmarks = self.pose_detector.detect(frame)
                         if landmarks:
                             frame = self.pose_detector.draw_skeleton(frame, landmarks)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        print(f"[Error PoseDetector]: {e}")
 
                 # Procesamiento de la estrategia activa
                 metrics = self.active_strategy.process_frame(landmarks, (h, w))

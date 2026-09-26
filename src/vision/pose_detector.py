@@ -1,9 +1,10 @@
 """
 Detector Holístico de Cuerpo y Manos con MediaPipe Tasks Vision.
 Combina PoseLandmarker (Full Body 33 puntos) con HandLandmarker (Manos y Dedos 21 puntos cada una).
-Ofrece máxima precisión para movimientos de manos, brazos y torso frente a la cámara web.
+Ofrece máxima fidelidad visual y precisión para movimientos de rostro, manos, brazos y torso.
 """
 import os
+import sys
 import cv2
 import numpy as np
 import mediapipe as mp
@@ -11,25 +12,45 @@ from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 from typing import Optional, List, Tuple, Dict, Any
 
-# Conexiones anatómicas principales para el cuerpo
+# Raíz del proyecto
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Conexiones anatómicas completas del cuerpo y rostro (MediaPipe Pose 33 landmarks)
 POSE_CONNECTIONS = [
-    (11, 12), # Hombro a hombro
-    (11, 13), (13, 15), # Brazo izq
-    (12, 14), (14, 16), # Brazo der
-    (11, 23), (12, 24), # Torso
-    (23, 24), # Cadera a cadera
-    (23, 25), (25, 27), # Pierna izq
-    (24, 26), (26, 28)  # Pierna der
+    # Rostro / Cabeza
+    (0, 1), (1, 2), (2, 3), (3, 7),         # Ojo izquierdo y oreja izquierda
+    (0, 4), (4, 5), (5, 6), (6, 8),         # Ojo derecho y oreja derecha
+    (9, 10),                                # Labios / Boca
+    (0, 11), (0, 12),                       # Cabeza / Nariz a hombros
+
+    # Torso y Extremidades Superiores
+    (11, 12),                               # Clavícula (Hombro a hombro)
+    (11, 13), (13, 15),                     # Brazo izquierdo
+    (12, 14), (14, 16),                     # Brazo derecho
+    (11, 23), (12, 24),                     # Laterales del torso
+    (23, 24),                               # Cadera a cadera
+
+    # Extremidades Inferiores
+    (23, 25), (25, 27),                     # Pierna izquierda
+    (24, 26), (26, 28),                     # Pierna derecha
+    (27, 29), (29, 31), (27, 31),           # Pie izquierdo
+    (28, 30), (30, 32), (28, 32)            # Pie derecho
 ]
 
-# Conexiones de las 21 articulaciones de cada mano
+# Conexiones de la palma de la mano en Pose (cuando no hay HandLandmarker dedicado)
+POSE_HAND_CONNECTIONS = [
+    (15, 17), (17, 19), (19, 15), (15, 21), # Mano izquierda
+    (16, 18), (18, 20), (20, 16), (16, 22)  # Mano derecha
+]
+
+# Conexiones anatómicas de los 21 puntos por mano (HandLandmarker)
 HAND_CONNECTIONS = [
     (0, 1), (1, 2), (2, 3), (3, 4),        # Pulgar
     (0, 5), (5, 6), (6, 7), (7, 8),        # Índice
     (5, 9), (9, 10), (10, 11), (11, 12),   # Medio
     (9, 13), (13, 14), (14, 15), (15, 16), # Anular
     (13, 17), (17, 18), (18, 19), (19, 20),# Meñique
-    (0, 17)                                 # Base palma
+    (0, 17)                                 # Base de la palma
 ]
 
 class HolisticData:
@@ -62,14 +83,15 @@ class PoseDetector:
     def __init__(self,
                  pose_model_path: str = "models/pose_landmarker_full.task",
                  hand_model_path: str = "models/hand_landmarker.task"):
+
         def resolve_model_path(p: str) -> str:
-            if os.path.exists(p):
+            if os.path.isabs(p) and os.path.exists(p):
                 return p
-            if getattr(sys, 'frozen', False):
-                base = getattr(sys, '_MEIPASS', os.path.dirname(sys.executable))
-                cand = os.path.join(base, p)
-                if os.path.exists(cand):
-                    return cand
+            if os.path.exists(p):
+                return os.path.abspath(p)
+            cand = os.path.join(PROJECT_ROOT, p)
+            if os.path.exists(cand):
+                return cand
             return p
 
         pose_model_path = resolve_model_path(pose_model_path)
@@ -81,15 +103,15 @@ class PoseDetector:
         if not os.path.exists(pose_model_path):
             raise FileNotFoundError(f"No se encontró el modelo de pose en: {pose_model_path}")
 
-        # 1. Detector de Pose (Cuerpo Completo)
+        # 1. Detector de Pose (Cuerpo Completo 33 landmarks)
         pose_base = python.BaseOptions(model_asset_path=pose_model_path)
         pose_options = vision.PoseLandmarkerOptions(
             base_options=pose_base,
             running_mode=vision.RunningMode.IMAGE,
             num_poses=1,
-            min_pose_detection_confidence=0.45,
-            min_pose_presence_confidence=0.45,
-            min_tracking_confidence=0.45
+            min_pose_detection_confidence=0.35,
+            min_pose_presence_confidence=0.35,
+            min_tracking_confidence=0.35
         )
         self.pose_detector = vision.PoseLandmarker.create_from_options(pose_options)
 
@@ -102,9 +124,9 @@ class PoseDetector:
                     base_options=hand_base,
                     running_mode=vision.RunningMode.IMAGE,
                     num_hands=2,
-                    min_hand_detection_confidence=0.35,
-                    min_hand_presence_confidence=0.35,
-                    min_tracking_confidence=0.35
+                    min_hand_detection_confidence=0.30,
+                    min_hand_presence_confidence=0.30,
+                    min_tracking_confidence=0.30
                 )
                 self.hand_detector = vision.HandLandmarker.create_from_options(hand_options)
             except Exception as e:
@@ -115,6 +137,7 @@ class PoseDetector:
         Detecta simultáneamente la pose corporal y las articulaciones de ambas manos.
         """
         rgb_frame = cv2.cvtColor(bgr_frame, cv2.COLOR_BGR2RGB)
+        rgb_frame = np.ascontiguousarray(rgb_frame)
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
 
         # Detección corporal
@@ -143,7 +166,10 @@ class PoseDetector:
 
     def draw_skeleton(self, frame: np.ndarray, landmarks, accent_color=(34, 197, 94)) -> np.ndarray:
         """
-        Dibuja el esqueleto del cuerpo y las articulaciones detalladas de los dedos de ambas manos.
+        Dibuja el esqueleto anatómico completo:
+        - Rostro: puntitos nítidos en ojos, nariz, boca y orejas.
+        - Cuerpo: líneas de conexión y articulaciones en verde MediaPipe / blanco.
+        - Manos: articulaciones de los 21 dedos y huesos palmares en cian brillante.
         """
         if landmarks is None:
             return frame
@@ -154,37 +180,63 @@ class PoseDetector:
         pose_pts = landmarks.pose if hasattr(landmarks, "pose") else landmarks
         hands_list = landmarks.hands if hasattr(landmarks, "hands") else []
 
-        # 1. Dibujar articulaciones corporales
+        # 1. Dibujar articulaciones y esqueleto corporal (MediaPipe Pose)
         if pose_pts is not None:
             points: Dict[int, Tuple[int, int]] = {}
             for idx, lm in enumerate(pose_pts):
-                if hasattr(lm, "visibility") and lm.visibility is not None and lm.visibility < 0.35:
+                vis = getattr(lm, "visibility", 1.0)
+                pres = getattr(lm, "presence", 1.0)
+                # Mantener puntos a menos que ambos indicadores sean nulos o sumamente bajos
+                if vis is not None and pres is not None and vis < 0.20 and pres < 0.20:
                     continue
+
                 cx, cy = int(lm.x * w), int(lm.y * h)
                 points[idx] = (cx, cy)
-                cv2.circle(frame, (cx, cy), 4, accent_color, -1)
-                cv2.circle(frame, (cx, cy), 6, (255, 255, 255), 1)
 
+                # Distinción estética: Rostro vs Cuerpo
+                if idx in range(0, 11):
+                    # Puntitos característicos del rostro (Google MediaPipe face dots)
+                    cv2.circle(frame, (cx, cy), 3, (255, 255, 255), -1)
+                    cv2.circle(frame, (cx, cy), 5, accent_color, 1)
+                else:
+                    # Articulaciones del cuerpo
+                    cv2.circle(frame, (cx, cy), 5, accent_color, -1)
+                    cv2.circle(frame, (cx, cy), 7, (255, 255, 255), 1)
+
+            # Dibujar líneas de conexión del cuerpo y rostro
             for start_idx, end_idx in POSE_CONNECTIONS:
                 if start_idx in points and end_idx in points:
+                    # Trazo doble para máxima visibilidad (base blanca + núcleo de acento)
                     cv2.line(frame, points[start_idx], points[end_idx], (255, 255, 255), 2)
                     cv2.line(frame, points[start_idx], points[end_idx], accent_color, 1)
 
-        # 2. Dibujar articulaciones de los dedos y palmas de cada mano
+            # Si no se detectaron manos con el detector fino, conectar al menos las manos del pose
+            if not hands_list:
+                for start_idx, end_idx in POSE_HAND_CONNECTIONS:
+                    if start_idx in points and end_idx in points:
+                        cv2.line(frame, points[start_idx], points[end_idx], (6, 182, 212), 2)
+                        cv2.circle(frame, points[end_idx], 4, (6, 182, 212), -1)
+
+        # 2. Dibujar articulaciones de los 21 dedos y huesos de cada mano (MediaPipe Hands)
         for hand in hands_list:
             hand_pts: Dict[int, Tuple[int, int]] = {}
             for idx, lm in enumerate(hand):
                 hx, hy = int(lm.x * w), int(lm.y * h)
                 hand_pts[idx] = (hx, hy)
-                # Yemas de los dedos en cian brillante
-                pt_color = (6, 182, 212) if idx in [4, 8, 12, 16, 20] else (56, 189, 248)
-                radius = 4 if idx in [4, 8, 12, 16, 20] else 3
+
+                # Yemas de los dedos (pulgar, índice, medio, anular, meñique)
+                is_fingertip = idx in [4, 8, 12, 16, 20]
+                pt_color = (6, 182, 212) if is_fingertip else (56, 189, 248)
+                radius = 5 if is_fingertip else 3
+
                 cv2.circle(frame, (hx, hy), radius, pt_color, -1)
+                cv2.circle(frame, (hx, hy), radius + 1, (255, 255, 255), 1)
 
             # Dibujar falanges y huesos de la mano
             for start_idx, end_idx in HAND_CONNECTIONS:
                 if start_idx in hand_pts and end_idx in hand_pts:
-                    cv2.line(frame, hand_pts[start_idx], hand_pts[end_idx], (6, 182, 212), 2)
+                    cv2.line(frame, hand_pts[start_idx], hand_pts[end_idx], (255, 255, 255), 2)
+                    cv2.line(frame, hand_pts[start_idx], hand_pts[end_idx], (6, 182, 212), 1)
 
         return frame
 

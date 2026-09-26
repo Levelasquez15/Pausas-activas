@@ -9,6 +9,3 @@ pillow>=10.0.0
 
 # Audio y notificaciones sonoras
 pygame>=2.5.0
-
-# Empaquetado y distribución ejecutable
-pyinstaller>=6.0.0

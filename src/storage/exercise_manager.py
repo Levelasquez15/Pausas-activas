@@ -94,10 +94,10 @@ DEFAULT_EXERCISES = [
 
 class ExerciseManager:
     def __init__(self, filepath: str = "data/custom_exercises.json"):
-        if not os.path.exists(filepath) and getattr(sys, 'frozen', False):
-            base = getattr(sys, '_MEIPASS', os.path.dirname(sys.executable))
-            cand = os.path.join(base, filepath)
-            if os.path.exists(cand):
+        if not os.path.isabs(filepath):
+            proj_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            cand = os.path.join(proj_root, filepath)
+            if os.path.exists(cand) or not os.path.exists(filepath):
                 filepath = cand
         self.filepath = filepath
         dir_name = os.path.dirname(filepath)
