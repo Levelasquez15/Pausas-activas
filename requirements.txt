@@ -1,0 +1,14 @@
+# Visión artificial y estimación de poses
+mediapipe>=0.10.0
+opencv-python>=4.8.0
+numpy>=1.24.0
+
+# Interfaz gráfica moderna y componentes visuales
+customtkinter>=5.2.0
+pillow>=10.0.0
+
+# Audio y notificaciones sonoras
+pygame>=2.5.0
+
+# Empaquetado y distribución ejecutable
+pyinstaller>=6.0.0
