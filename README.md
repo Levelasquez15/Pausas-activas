@@ -1,74 +1,98 @@
 # 🧘‍♂️ Pausas Activas & Bienestar Laboral con IA 🏋️‍♀️
 
-Sistema inteligente de escritorio para monitoreo de pausas activas ergonómicas, estimación de poses en tiempo real con visión artificial y módulo de respiración consciente/anti-estrés.
+Sistema inteligente de escritorio para monitoreo de **pausas activas ergonómicas**, estimación de poses en tiempo real con visión artificial, gamificación interactiva con Coach Virtual y módulos de respiración anti-estrés para desarrolladores y trabajadores de oficina.
 
 ---
 
-## 🚀 Características Principales
+## ⚡ Guía Rápida de Descarga e Instalación
 
-1. **Estimación de Poses en Tiempo Real**:
-   - Detección precisa de 33 articulaciones corporales mediante **Google MediaPipe Pose** optimizado en CPU (TFLite XNNPACK).
-   - Renderizado del esqueleto anatómico y cálculo de ángulos biomecánicos con **NumPy** y **OpenCV**.
+Diseñado para que cualquier persona pueda descargarlo en `.zip`, descomprimirlo y empezar a usarlo en **menos de 2 minutos**.
 
-2. **Sentadillas Activas con Diagnóstico Físico**:
-   - Conteo automático de repeticiones basado en máquina de estados y ángulos de flexión rodilla-cadera-tobillo (160° extensión -> 90° flexión profunda).
-   - **Evaluación de mejora física**: Analiza tu volumen de repeticiones y te indica cómo estás fortaleciendo tu tren inferior, previniendo dolores lumbares y reactivando la circulación venosa.
-
-3. **Módulo de Relajación y Respiración Anti-Estrés (Estilo TikTok)**:
-   - **Respiración Triangular**: Pacer visual interactivo donde una esfera recorre un triángulo en tres fases rítmicas (*Inhala 3.5s ➔ Mantén 3.5s ➔ Exhala 3.5s*).
-   - **Técnica 4-7-8**: Pacer circular que guía la desaceleración del sistema nervioso (*4s Inhala por la nariz ➔ 7s Retén ➔ 8s Exhala suave por la boca*).
-   - **Respiración Consciente Postural**: MediaPipe evalúa si mantienes la espalda erguida y los hombros nivelados durante la meditación/respiración.
-
-4. **Temporizador Ergonómico para el Puesto de Trabajo**:
-   - Cuenta regresiva de tiempo sedentario (por defecto 45 minutos de trabajo continuo).
-   - Alarma visual y auditiva cuando es momento de levantarse a realizar la pausa.
-
-5. **Retroalimentación Sonora & Base de Datos**:
-   - Chimes ascendentes armónicos al completar cada sentadilla válida.
-   - Tonos zen (528 Hz) para marcar las fases de respiración.
-   - Persistencia local en SQLite (`pausas_activas.db`) con histórico de repeticiones, calorías quemadas y nivel de condición física.
+### 📥 Paso 1: Descargar el Proyecto
+1. Ve al botón verde **`<> Code`** en la parte superior de este repositorio en GitHub.
+2. Haz clic en **`Download ZIP`** (o [descarga directa aquí](https://github.com/Levelasquez15/Pausas-activas/archive/refs/heads/main.zip)).
+3. Haz clic derecho sobre el archivo `.zip` descargado y selecciona **"Extraer todo..."** en una carpeta de tu preferencia.
 
 ---
 
-## 🏛️ Patrones de Diseño Implementados
+### 💻 Paso 2: Instalación (En Windows con 1 solo Clic)
 
-- **Strategy Pattern (`src/patterns/strategy.py`)**: Desacopla la lógica de cada ejercicio o técnica de relajación (`SquatStrategy`, `BreathingStrategy`, `StretchStrategy`), permitiendo alternar entre ellas en caliente sin modificar el motor de visión.
-- **Observer Pattern (`src/patterns/observer.py`)**: El `EventBus` notifica eventos clave (`REP_COMPLETED`, `BREATH_PHASE_CHANGE`, `BREAK_ALERT`) a los suscriptores (interfaz visual, sintetizador de audio y base de datos) sin acoplamientos rígidos.
-- **State Pattern (`src/patterns/state.py`)**: Controla las transiciones del ciclo laboral (`WORKING` ➔ `BREAK_ALERT` ➔ `EXERCISING` ➔ `BREATHING` ➔ `SUMMARY`).
-- **Factory Method (`src/vision/pose_detector.py`)**: `PoseDetectorFactory` encapsula la inicialización y configuración del modelo de MediaPipe PoseLandmarker.
+> **Requisito previo:** Tener instalado **Python 3.10 o superior** (descárgalo gratis en [python.org](https://www.python.org/downloads/)).  
+> ⚠️ *Importante:* Al instalar Python, asegúrate de marcar la casilla **"Add python.exe to PATH"**.
 
----
+#### 🖱️ Opción A: Con accesos directos (Recomendada)
+1. Entra a la carpeta descomprimida.
+2. Haz doble clic en **`instalar.bat`** (solo la primera vez). Esto instalará automáticamente todas las librerías necesarias.
+3. Haz doble clic en **`ejecutar.bat`** para abrir la aplicación. ¡Listo!
 
-## 📋 Aclaración Técnica de Librerías y Conceptos Solicitados
-
-- **Google MediaPipe Pose**: Librería de Google para detección de 33 puntos anatómicos 3D a más de 30 FPS en CPUs estándar, ideal para computadoras de oficina.
-- **"Harmer Pi"**:
-  - *Raspberry Pi*: Micro-ordenador en el que este proyecto puede desplegarse en modo edge con pantalla táctil o monitor HDMI.
-  - *HaMeR*: Modelo de investigación para reconstrucción de mallas de manos/cuerpo. MediaPipe Pose resulta mucho más rápido y liviano para tiempo real.
-- **"Neutron de Nvidia"**:
-  - *Nvidia Jetson (Nano / Orin)*: Placas de cómputo embebido de Nvidia con aceleración CUDA.
-  - *Nvidia TensorRT*: Motor de inferencia de alto rendimiento de Nvidia para maximizar FPS y minimizar latencia de modelos de IA.
-  - *Netron*: Visualizador para inspeccionar arquitecturas de redes neuronales (ONNX, TFLite).
-
----
-
-## 💻 Instalación y Ejecución
-
-### 1. Requisitos Previos
-- Python 3.10 o superior (compatible con Python 3.14).
-- Cámara web integrada o USB.
-
-### 2. Instalación de Dependencias
+#### ⌨️ Opción B: Por Consola / Terminal
+Abre PowerShell o CMD dentro de la carpeta y ejecuta:
 ```bash
+# 1. Instalar librerías
 py -m pip install -r requirements.txt
-```
 
-### 3. Ejecutar la Aplicación
-```bash
+# 2. Iniciar la aplicación
 py run.py
 ```
 
-### 4. Ejecutar las Pruebas Unitarias
+---
+
+## 🎯 Características Principales
+
+### 1. 🕺 Modo TuxDance: Rutina Ergonómica con Coach Virtual
+- **Avatar Biomecánico Articulado**: Un stickman dinámico que te muestra en tiempo real cómo realizar cada estiramiento.
+- **Detección Bilateral Calibrada**: Para ejercicios de ambos lados (tríceps, torsión de tronco, cuello, muñecas), el sistema detecta cada lado de forma independiente y te guía con **flechas direccionales animadas** de izquierda a derecha.
+- **Catálogo de 8 Pausas Ergonómicas**:
+  1. *Estiramiento de Muñecas*: Prevención del síndrome del túnel carpiano.
+  2. *Círculos de Hombros*: Descarga de trapecios y cuello.
+  3. *Apertura de Pecho ('W')*: Corrección de joroba y hombros caídos.
+  4. *Inclinación de Cuello*: Alivio de tensión cervical bilateral.
+  5. *Estiramiento de Tríceps*: Descarga dorsal y escapular tras la cabeza.
+  6. *Torsión de Tronco*: Movilidad de columna y descompresión lumbar.
+  7. *Brazos al Cielo*: Elongación axial de columna vertebral.
+  8. *Bombeo de Pantorrillas*: Reactivación venosa y circulación en piernas.
+
+### 2. 🔒 Modo Bloqueo de Pantalla (Enfoque Ergonómico)
+- Opción configurable para bloquear la pantalla o mantener la pausa activa al frente durante el descanso, evitando distracciones y asegurando que realmente te tomes el descanso.
+
+### 3. 🏋️ Sentadillas con Diagnóstico Biomecánico
+- Conteo inteligente de repeticiones analizando los ángulos articulares Cadera-Rodilla-Tobillo (160° a 90°).
+- Diagnóstico físico en tiempo real con recomendaciones de fortalecimiento muscular.
+
+### 4. 🧘 Módulos de Respiración y Relajación
+- **Respiración Triangular**: Pacer visual rítmico (*Inhala 3.5s ➔ Mantén 3.5s ➔ Exhala 3.5s*).
+- **Técnica 4-7-8**: Reducción de pulsaciones y estrés (*4s Inhala ➔ 7s Retén ➔ 8s Exhala*).
+- **Evaluación Postural Zen**: Supervisión de hombros relajados y espalda alineada.
+
+### 5. 📊 Editor de Pausas e Historial Local
+- **Editor de Ejercicios**: Permite crear, modificar o personalizar la duración de los ejercicios desde la interfaz.
+- **Base de Datos SQLite**: Registro histórico de pausas completadas, combo máximo y calorías estimadas (`pausas_activas.db`).
+
+---
+
+## 🏛️ Arquitectura y Patrones de Diseño
+
+El sistema está construido siguiendo buenas prácticas de ingeniería de software:
+- **Strategy Pattern (`src/patterns/strategy.py`)**: Intercambio dinámico de estrategias de ejercicio (`DanceGameStrategy`, `SquatStrategy`, `BreathingStrategy`, `StretchStrategy`) sin alterar el hilo de captura de video.
+- **Observer Pattern (`src/patterns/observer.py`)**: Desacopla la lógica de visión de la interfaz gráfica y los sonidos mediante un `EventBus` de eventos reactivos (`REP_COMPLETED`, `BREATH_PHASE_CHANGE`, etc.).
+- **State Pattern (`src/patterns/state.py`)**: Máquina de estados para gestionar el ciclo de trabajo y descanso (`WORKING`, `BREAK_ALERT`, `EXERCISING`, `SUMMARY`).
+- **Factory Method (`src/vision/pose_detector.py`)**: Centraliza la instanciación y configuración de modelos de MediaPipe Pose.
+
+---
+
+## 🧪 Pruebas Unitarias
+
+Para validar el catálogo, la cinemática de ángulos y la progresión bilateral:
 ```bash
+py tests/test_ergonomics.py
 py tests/test_pipeline.py
 ```
+
+---
+
+## 👥 Tecnologías Utilizadas
+- **Lenguaje**: Python 3.10+
+- **Visión Artificial**: Google MediaPipe Pose, OpenCV, NumPy
+- **Interfaz Gráfica**: CustomTkinter, Pillow (PIL)
+- **Audio y Efectos**: Pygame
+- **Persistencia**: SQLite3
