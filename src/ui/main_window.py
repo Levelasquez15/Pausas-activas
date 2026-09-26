@@ -833,7 +833,7 @@ class MainWindow(ctk.CTk):
 
         elif self.active_strategy.category == "estiramiento":
             step = metrics.get("step", 0)
-            step_titles = ["Paso 1/3: Cuello a la Izquierda", "Paso 2/3: Cuello a la Derecha", "Paso 3/3: Brazos al Cielo"]
+            step_titles = ["Paso 1/2: Inclinación de Cuello (Cualquier lado)", "Paso 2/2: Brazos al Cielo"]
             if step < len(step_titles):
                 self.lbl_exercise_step.configure(text=step_titles[step])
 

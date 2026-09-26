@@ -29,11 +29,11 @@ class StretchStrategy(ExerciseStrategy):
         return "estiramiento"
 
     def reset(self) -> None:
-        self.step = 0 # 0: Cuello Izq, 1: Cuello Der, 2: Brazos Arriba
+        self.step = 0 # 0: Cuello (Izq o Der), 1: Brazos Arriba
         self.hold_start_time = None
-        self.hold_duration = 3.5 # Segundos de estiramiento sostenido por lado
+        self.hold_duration = 4.0 # Segundos de estiramiento sostenido
         self.completed_stretches = 0
-        self.feedback = "Inclina suavemente la cabeza hacia la izquierda"
+        self.feedback = "Inclina suavemente la cabeza hacia cualquier lado (izq o der)"
         self.hold_progress = 0.0
         self.is_completed = False
 
@@ -45,13 +45,13 @@ class StretchStrategy(ExerciseStrategy):
         if getattr(self, "is_completed", False):
             pose_key = "COMPLETED"
         else:
-            pose_key = "CUELLO_IZQ" if self.step == 0 else ("CUELLO_DER" if self.step == 1 else "BRAZOS_ARRIBA")
+            pose_key = "CUELLO_IZQ" if self.step == 0 else "BRAZOS_ARRIBA"
         avatar_img = CoachAvatar.render_pose(pose_key, self.tick, size=(190, 190))
 
         if landmarks is None:
             return {
                 "step": self.step,
-                "direction": "LEFT" if self.step == 0 else ("RIGHT" if self.step == 1 else "UP"),
+                "direction": "ANY" if self.step == 0 else "UP",
                 "feedback": "Ponte frente a la cámara para iniciar el estiramiento",
                 "hold_progress": 0.0,
                 "completed": self.completed_stretches,
@@ -83,13 +83,13 @@ class StretchStrategy(ExerciseStrategy):
         sh_angle = calculate_slope_angle(sh_p1, sh_p2)
         true_tilt = abs(ear_angle - sh_angle)
 
-        direction_code = "LEFT" if self.step == 0 else ("RIGHT" if self.step == 1 else "UP")
+        direction_code = "ANY" if self.step == 0 else "UP"
 
         if getattr(self, "is_completed", False):
             return {
                 "step": self.step,
                 "direction": "DONE",
-                "feedback": "¡Estiramiento de cuello completado con éxito! 🎉",
+                "feedback": "¡Estiramiento completado con éxito! 🎉",
                 "hold_progress": 1.0,
                 "hold_sec_remaining": 0.0,
                 "completed": self.completed_stretches,
@@ -103,25 +103,16 @@ class StretchStrategy(ExerciseStrategy):
             }
 
         if self.step == 0:
-            # 1. Flecha izquierda en pantalla espejo (la cabeza se inclina hacia la izquierda: ear_r baja)
-            left_tilted = (ear_r.y > ear_l.y + 0.030) and (true_tilt > 11.5)
-            if left_tilted and hands_down:
+            # 1. Inclinación hacia cualquier hombro (izquierdo o derecho indistintamente)
+            tilted = (abs(ear_l.y - ear_r.y) > 0.028) and (true_tilt > 11.0)
+            if tilted and hands_down:
                 is_stretching = True
-                self.feedback = "¡Perfecto! Mantén la inclinación hacia la izquierda..."
+                self.feedback = "¡Perfecto! Mantén la cabeza inclinada al hombro..."
             else:
-                self.feedback = "⬅ Inclina suavemente la cabeza hacia la flecha izquierda"
+                self.feedback = "💆 Inclina suavemente la cabeza hacia cualquier lado (izq o der)"
 
         elif self.step == 1:
-            # 2. Flecha derecha en pantalla espejo (la cabeza se inclina hacia la derecha: ear_l baja)
-            right_tilted = (ear_l.y > ear_r.y + 0.030) and (true_tilt > 11.5)
-            if right_tilted and hands_down:
-                is_stretching = True
-                self.feedback = "¡Excelente! Mantén la inclinación hacia la derecha..."
-            else:
-                self.feedback = "➡ Ahora inclina la cabeza hacia la flecha derecha"
-
-        elif self.step == 2:
-            # 3. Brazos arriba para descompresión de columna (ambas muñecas claramente sobre la cabeza)
+            # 2. Brazos arriba para descompresión de columna
             arms_elevated = (w_l.y < nose.y - 0.08) and (w_r.y < nose.y - 0.08)
             if arms_elevated:
                 is_stretching = True
@@ -142,8 +133,8 @@ class StretchStrategy(ExerciseStrategy):
                 self.hold_start_time = None
                 self.hold_progress = 0.0
 
-                if self.step >= 2:
-                    # ¡Rutina completada! No reiniciar automáticamente
+                if self.step >= 1:
+                    # ¡Rutina completada!
                     self.is_completed = True
                     self.event_bus.publish(AppEvent.REP_COMPLETED, {
                         "reps": self.completed_stretches,

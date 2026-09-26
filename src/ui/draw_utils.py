@@ -106,6 +106,14 @@ def draw_direction_indicator(frame: np.ndarray, direction: str, center_pt: tuple
         end = (cx, cy - 55 + offset)
         cv2.arrowedLine(frame, start, end, color, 4, tipLength=0.35)
         cv2.circle(frame, (cx, cy - 60 + offset), 8, (255, 255, 255), 2)
+    elif direction == "ANY":
+        # Flechas a ambos lados indicando que cualquier hombro/lado es válido
+        start_l = (cx - 15 - offset, cy)
+        end_l = (cx - 48 - offset, cy)
+        cv2.arrowedLine(frame, start_l, end_l, color, 3, tipLength=0.35)
+        start_r = (cx + 15 + offset, cy)
+        end_r = (cx + 48 + offset, cy)
+        cv2.arrowedLine(frame, start_r, end_r, color, 3, tipLength=0.35)
 
     return frame
 
